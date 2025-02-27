@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { useThemeStore, useOrdersStore, useProductsStore, useClientsStore } from '../lib/store';
+import { useThemeStore, useOrdersStore, useClientsStore } from '../lib/store';
 import { ShoppingCart, Plus, Minus, Trash2, Calendar, Search, X, Save, Filter } from 'lucide-react';
 import { format, addDays, isBefore, parseISO } from 'date-fns';
 
 export default function Orders() {
   const isDarkMode = useThemeStore((state) => state.isDarkMode);
   const { orders, createOrder } = useOrdersStore();
-  const { products } = useProductsStore();
   const { clients } = useClientsStore();
   
   // Order form state
@@ -23,13 +22,8 @@ export default function Orders() {
   
   // Order items state
   const [orderItems, setOrderItems] = useState([
-    { id: Date.now(), productId: '', name: '', description: '', quantity: 1, unitPrice: 0, lineTotal: 0 }
+    { id: Date.now(), name: '', description: '', quantity: 1, unitPrice: 0, lineTotal: 0 }
   ]);
-  
-  // Product search state
-  const [productSearch, setProductSearch] = useState('');
-  const [activeProductSearchIndex, setActiveProductSearchIndex] = useState<number | null>(null);
-  const [showProductDropdown, setShowProductDropdown] = useState(false);
   
   // Order totals
   const [subtotal, setSubtotal] = useState(0);
@@ -46,12 +40,6 @@ export default function Orders() {
     client.name.toLowerCase().includes(clientSearch.toLowerCase()) ||
     client.email.toLowerCase().includes(clientSearch.toLowerCase()) ||
     client.phone.toLowerCase().includes(clientSearch.toLowerCase())
-  );
-  
-  // Filter products based on search
-  const filteredProducts = products.filter(product => 
-    product.name.toLowerCase().includes(productSearch.toLowerCase()) ||
-    product.sku.toLowerCase().includes(productSearch.toLowerCase())
   );
   
   // Filter orders based on search and status
@@ -72,8 +60,6 @@ export default function Orders() {
       lineTotal: item.quantity * item.unitPrice
     }));
     
-    setOrderItems(newOrderItems);
-    
     const newSubtotal = newOrderItems.reduce((sum, item) => sum + item.lineTotal, 0);
     const newTaxAmount = newSubtotal * taxRate;
     const newGrandTotal = newSubtotal + newTaxAmount;
@@ -81,6 +67,12 @@ export default function Orders() {
     setSubtotal(newSubtotal);
     setTaxAmount(newTaxAmount);
     setGrandTotal(newGrandTotal);
+    
+    // Only update orderItems if they've actually changed
+    // This prevents the infinite loop
+    if (JSON.stringify(newOrderItems) !== JSON.stringify(orderItems)) {
+      setOrderItems(newOrderItems);
+    }
   }, [orderItems, taxRate]);
   
   // Handle delivery date validation
@@ -99,7 +91,7 @@ export default function Orders() {
   const addItemRow = () => {
     setOrderItems([
       ...orderItems,
-      { id: Date.now(), productId: '', name: '', description: '', quantity: 1, unitPrice: 0, lineTotal: 0 }
+      { id: Date.now(), name: '', description: '', quantity: 1, unitPrice: 0, lineTotal: 0 }
     ]);
   };
   
@@ -115,7 +107,7 @@ export default function Orders() {
     if (quantity < 1) quantity = 1;
     
     setOrderItems(orderItems.map(item => 
-      item.id === id ? { ...item, quantity, lineTotal: quantity * item.unitPrice } : item
+      item.id === id ? { ...item, quantity } : item
     ));
   };
   
@@ -136,38 +128,8 @@ export default function Orders() {
   // Update item price
   const updateItemPrice = (id: number, unitPrice: number) => {
     setOrderItems(orderItems.map(item => 
-      item.id === id ? { ...item, unitPrice, lineTotal: item.quantity * unitPrice } : item
+      item.id === id ? { ...item, unitPrice } : item
     ));
-  };
-  
-  // Select a product for an item
-  const selectProduct = (index: number, productId: string) => {
-    const product = products.find(p => p.id === productId);
-    
-    if (product) {
-      const updatedItems = [...orderItems];
-      updatedItems[index] = {
-        ...updatedItems[index],
-        productId,
-        name: product.name,
-        description: product.description,
-        unitPrice: product.price,
-        quantity: 1,
-        lineTotal: product.price
-      };
-      
-      setOrderItems(updatedItems);
-      setProductSearch('');
-      setShowProductDropdown(false);
-      setActiveProductSearchIndex(null);
-    }
-  };
-  
-  // Handle product search for a specific item
-  const handleProductSearch = (index: number, search: string) => {
-    setProductSearch(search);
-    setActiveProductSearchIndex(index);
-    setShowProductDropdown(true);
   };
   
   // Save the order
@@ -197,7 +159,6 @@ export default function Orders() {
       paymentMethod,
       amountPaid: paymentStatus === 'partially_paid' ? amountPaid : (paymentStatus === 'paid' ? grandTotal : 0),
       items: orderItems.map(item => ({
-        productId: item.productId,
         name: item.name,
         description: item.description,
         quantity: item.quantity,
@@ -220,7 +181,7 @@ export default function Orders() {
     setPaymentMethod('cash');
     setAmountPaid(0);
     setOrderItems([
-      { id: Date.now(), productId: '', name: '', description: '', quantity: 1, unitPrice: 0, lineTotal: 0 }
+      { id: Date.now(), name: '', description: '', quantity: 1, unitPrice: 0, lineTotal: 0 }
     ]);
     
     alert('Order saved successfully!');
@@ -238,7 +199,7 @@ export default function Orders() {
       setPaymentMethod('cash');
       setAmountPaid(0);
       setOrderItems([
-        { id: Date.now(), productId: '', name: '', description: '', quantity: 1, unitPrice: 0, lineTotal: 0 }
+        { id: Date.now(), name: '', description: '', quantity: 1, unitPrice: 0, lineTotal: 0 }
       ]);
     }
   };
@@ -505,64 +466,15 @@ export default function Orders() {
                 {orderItems.map((item, index) => (
                   <tr key={item.id}>
                     <td className="px-4 py-3">
-                      <div className="relative">
-                        <input
-                          type="text"
-                          value={item.name}
-                          onChange={(e) => updateItemName(item.id, e.target.value)}
-                          placeholder="Enter item name or search..."
-                          onFocus={() => {
-                            setActiveProductSearchIndex(index);
-                            setShowProductDropdown(true);
-                          }}
-                          className={`block w-full rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 ${
-                            isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'
-                          }`}
-                        />
-                        
-                        {/* Product search dropdown */}
-                        {showProductDropdown && activeProductSearchIndex === index && (
-                          <div className={`absolute z-10 w-full mt-1 rounded-md shadow-lg max-h-60 overflow-y-auto ${
-                            isDarkMode ? 'bg-gray-700 border-gray-600' : 'bg-white border-gray-300'
-                          }`}>
-                            <div className="p-2">
-                              <input
-                                type="text"
-                                value={productSearch}
-                                onChange={(e) => handleProductSearch(index, e.target.value)}
-                                placeholder="Search product catalog..."
-                                className={`block w-full rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 ${
-                                  isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'
-                                }`}
-                                autoFocus
-                              />
-                            </div>
-                            
-                            {filteredProducts.length > 0 ? (
-                              filteredProducts.map((product) => (
-                                <div
-                                  key={product.id}
-                                  className={`px-4 py-2 cursor-pointer ${
-                                    isDarkMode ? 'hover:bg-gray-600' : 'hover:bg-gray-100'
-                                  }`}
-                                  onClick={() => selectProduct(index, product.id)}
-                                >
-                                  <div className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                                    {product.name}
-                                  </div>
-                                  <div className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-500'}`}>
-                                    SKU: {product.sku} | ${product.price.toFixed(2)}
-                                  </div>
-                                </div>
-                              ))
-                            ) : (
-                              <div className={`px-4 py-2 text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-500'}`}>
-                                No products found. You can enter a custom item.
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
+                      <input
+                        type="text"
+                        value={item.name}
+                        onChange={(e) => updateItemName(item.id, e.target.value)}
+                        placeholder="Enter item name..."
+                        className={`block w-full rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 ${
+                          isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'
+                        }`}
+                      />
                     </td>
                     <td className="px-4 py-3">
                       <input
