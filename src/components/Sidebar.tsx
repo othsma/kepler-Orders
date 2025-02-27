@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Users, PenTool as Tool, ShoppingCart, Wrench, Settings, ChevronDown, ChevronUp } from 'lucide-react';
+import { LayoutDashboard, Users, PenTool as Tool, ShoppingCart, Wrench, Settings, ChevronDown, ChevronUp, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useThemeStore } from '../lib/store';
 
 const navigation = [
@@ -25,6 +25,7 @@ export default function Sidebar() {
   const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({
     'POS': true // Default expanded
   });
+  const [isCollapsed, setIsCollapsed] = useState(false);
 
   const toggleExpand = (name: string) => {
     setExpandedItems(prev => ({
@@ -33,16 +34,32 @@ export default function Sidebar() {
     }));
   };
 
+  const toggleSidebar = () => {
+    setIsCollapsed(!isCollapsed);
+  };
+
   return (
-    <div className={`fixed inset-y-0 z-50 flex w-72 flex-col ${
+    <div className={`fixed inset-y-0 z-50 flex flex-col transition-all duration-300 ${
       isDarkMode ? 'bg-gray-800' : 'bg-white'
-    }`}>
+    } ${isCollapsed ? 'w-20' : 'w-72'}`}>
       <div className="flex h-16 shrink-0 items-center px-6">
         <Wrench className="h-8 w-8 text-indigo-600" />
-        <span className="ml-4 text-xl font-semibold">TechFix Pro</span>
+        {!isCollapsed && <span className="ml-4 text-xl font-semibold">TechFix Pro</span>}
       </div>
 
-      <nav className="flex-1 space-y-1 px-3 py-4">
+      <button 
+        onClick={toggleSidebar}
+        className={`absolute top-4 -right-4 p-1 rounded-full shadow-md ${
+          isDarkMode ? 'bg-gray-700 text-gray-300' : 'bg-white text-gray-700'
+        }`}
+      >
+        {isCollapsed ? 
+          <ChevronRight className="h-4 w-4" /> : 
+          <ChevronLeft className="h-4 w-4" />
+        }
+      </button>
+
+      <nav className="flex-1 space-y-1 px-3 py-4 overflow-y-auto">
         {navigation.map((item) => (
           <div key={item.name}>
             {item.children ? (
@@ -55,15 +72,17 @@ export default function Sidebar() {
                 >
                   <div className="flex items-center">
                     <item.icon className="h-5 w-5 mr-3" />
-                    {item.name}
+                    {!isCollapsed && item.name}
                   </div>
-                  {expandedItems[item.name] ? (
-                    <ChevronUp className="h-4 w-4" />
-                  ) : (
-                    <ChevronDown className="h-4 w-4" />
+                  {!isCollapsed && (
+                    expandedItems[item.name] ? (
+                      <ChevronUp className="h-4 w-4" />
+                    ) : (
+                      <ChevronDown className="h-4 w-4" />
+                    )
                   )}
                 </div>
-                {expandedItems[item.name] && (
+                {expandedItems[item.name] && !isCollapsed && (
                   <div className="ml-8 mt-2 space-y-1">
                     {item.children.map((child) => (
                       <NavLink
@@ -97,7 +116,7 @@ export default function Sidebar() {
                 end
               >
                 <item.icon className="h-5 w-5 mr-3" />
-                {item.name}
+                {!isCollapsed && item.name}
               </NavLink>
             )}
           </div>

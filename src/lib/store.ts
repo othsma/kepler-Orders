@@ -13,11 +13,15 @@ export const useThemeStore = create<ThemeState>((set) => ({
 interface UserState {
   language: 'en' | 'es' | 'fr';
   setLanguage: (language: 'en' | 'es' | 'fr') => void;
+  sidebarCollapsed: boolean;
+  toggleSidebar: () => void;
 }
 
 export const useUserStore = create<UserState>((set) => ({
   language: 'en',
   setLanguage: (language) => set({ language }),
+  sidebarCollapsed: false,
+  toggleSidebar: () => set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
 }));
 
 interface Client {

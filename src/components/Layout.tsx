@@ -10,7 +10,7 @@ export default function Layout() {
   return (
     <div className={`min-h-screen ${isDarkMode ? 'dark bg-gray-900' : 'bg-gray-50'}`}>
       <Sidebar />
-      <div className="lg:pl-72">
+      <div className="transition-all duration-300 lg:pl-20">
         <Header />
         <main className="py-10">
           <div className="px-4 sm:px-6 lg:px-8">
